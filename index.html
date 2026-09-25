@@ -1,0 +1,1863 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vercel Deploy — Lianix Tools</title>
+<style>
+/* ─── TOKENS ─── */
+:root{
+  --mint:#9bf4b1;--yellow:#ffe46a;--red:#ff6b6b;--ink:#111;
+  --paper:#f6f2e8;--card:#fff;--muted:#666;--sidebar:264px;
+  --border:3px solid #111;--r:13px;--sh:5px 5px 0 #111
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{text-decoration:none;color:inherit}
+button{font:inherit;cursor:pointer;border:none;background:none}
+svg{display:block;flex-shrink:0}
+
+/* ─── SIDEBAR ─── */
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:var(--sidebar);
+  background:var(--card);border-right:var(--border);
+  display:flex;flex-direction:column;z-index:30;overflow-y:auto
+}
+.brand{
+  padding:20px 18px;border-bottom:var(--border);
+  background:var(--mint);display:flex;align-items:center;gap:12px
+}
+.brand-mark{
+  width:40px;height:40px;border:3px solid #111;border-radius:12px;
+  background:#fff;box-shadow:3px 3px 0 #111;flex-shrink:0;
+  display:grid;place-items:center
+}
+.brand-text{font-weight:950;font-size:18px;letter-spacing:-.04em;line-height:1.1}
+.brand-sub{font:700 10px ui-monospace,monospace;opacity:.55;margin-top:3px}
+
+.nav{padding:16px 10px;flex:1;display:flex;flex-direction:column;gap:2px}
+.nav-sep{font:700 10px ui-monospace,monospace;letter-spacing:2px;opacity:.4;
+  text-transform:uppercase;padding:10px 12px 6px;display:block;margin-top:6px}
+.nav-sep:first-child{margin-top:0}
+.nav a{
+  display:flex;align-items:center;gap:10px;color:#111;
+  padding:11px 13px;border:2.5px solid transparent;border-radius:12px;
+  font-weight:800;font-size:13.5px;transition:.12s
+}
+.nav a:hover{border-color:#111;box-shadow:3px 3px 0 #111}
+.nav a.active{background:var(--mint);border-color:#111;box-shadow:3px 3px 0 #111}
+
+.sidebar-foot{
+  padding:13px 18px;border-top:var(--border);
+  font:700 10px ui-monospace,monospace;color:var(--muted)
+}
+
+/* ─── MAIN ─── */
+.main{margin-left:var(--sidebar);padding:32px;min-height:100vh}
+.shell{max-width:1120px;margin:0 auto}
+
+/* ─── TOP ─── */
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:26px}
+.eyebrow{font:800 11px ui-monospace,monospace;letter-spacing:2.5px;text-transform:uppercase;opacity:.45;margin-bottom:9px}
+.title{font-size:clamp(38px,5.5vw,72px);line-height:.88;letter-spacing:-.06em;font-weight:950}
+.sub{color:var(--muted);font-weight:600;margin-top:11px;font-size:14px;line-height:1.55;max-width:560px}
+
+.api-pill{
+  border:var(--border);border-radius:999px;padding:9px 15px;
+  background:var(--card);box-shadow:var(--sh);
+  font:800 11px ui-monospace,monospace;display:flex;align-items:center;gap:8px;white-space:nowrap
+}
+.live-dot{
+  width:9px;height:9px;border-radius:50%;background:#aaa;flex-shrink:0;
+  transition:background .3s
+}
+.live-dot.on{background:#25cc62;animation:blink 1.8s infinite}
+.live-dot.err{background:var(--red)}
+@keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(37,204,98,.5)}60%{box-shadow:0 0 0 9px transparent}}
+
+/* ─── GRID ─── */
+.grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px}
+
+/* ─── CARD ─── */
+.card{background:var(--card);border:var(--border);border-radius:18px;box-shadow:var(--sh);overflow:hidden}
+.card-head{
+  padding:15px 20px;border-bottom:var(--border);
+  display:flex;justify-content:space-between;align-items:center
+}
+.card-head h2{font-size:15px;font-weight:950;letter-spacing:-.03em;display:flex;align-items:center;gap:8px}
+.card-body{padding:20px}
+
+/* ─── BADGE ─── */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 10px;border:2px solid #111;border-radius:7px;
+  font:800 10px ui-monospace,monospace;text-transform:uppercase
+}
+.badge.idle{background:#f0f0f0}
+.badge.ok{background:var(--mint)}
+.badge.building{background:var(--yellow);animation:pulse-bg .9s ease-in-out infinite alternate}
+.badge.ready{background:var(--mint)}
+.badge.err{background:var(--red);color:#fff}
+@keyframes pulse-bg{from{opacity:.75}to{opacity:1}}
+
+/* ─── FIELD ─── */
+.field{margin-bottom:15px}
+.field:last-child{margin-bottom:0}
+.label{display:block;font:800 11px ui-monospace,monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;opacity:.65}
+.inp,.sel,.ta{
+  width:100%;border:2.5px solid #111;border-radius:11px;
+  padding:11px 13px;font:700 14px Inter,sans-serif;
+  background:#fff;color:#111;outline:none;transition:.12s;appearance:none
+}
+.inp:focus,.sel:focus,.ta:focus{box-shadow:4px 4px 0 #111;transform:translate(-1px,-1px)}
+.ta{resize:vertical;min-height:76px;font-family:ui-monospace,monospace;font-size:12.5px;line-height:1.5}
+.hint{font:600 11px Inter,sans-serif;color:var(--muted);margin-top:5px;line-height:1.4}
+.sel{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23111' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;cursor:pointer
+}
+.mode-pills{display:flex;gap:8px;margin-bottom:14px}
+.mode-pill{
+  flex:1;border:2.5px solid #111;border-radius:11px;padding:11px 12px;
+  font:800 12.5px Inter,sans-serif;background:#fff;transition:.12s;
+  display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer
+}
+.mode-pill:hover{box-shadow:3px 3px 0 #111}
+.mode-pill.active{background:var(--mint);box-shadow:3px 3px 0 #111}
+.form-lock.locked{position:relative;pointer-events:none;opacity:.55;filter:grayscale(.15)}
+.token-gate-msg{
+  border:2.5px solid #111;border-radius:11px;padding:12px 14px;
+  background:var(--yellow);font:700 12.5px Inter,sans-serif;
+  margin-bottom:14px;display:none;align-items:center;gap:10px
+}
+.token-gate-msg.show{display:flex}
+
+.pw-wrap{position:relative}
+.pw-wrap .inp{padding-right:42px}
+.pw-toggle{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  padding:4px;color:var(--muted);display:grid;place-items:center
+}
+
+/* ─── TABS ─── */
+.tabs{display:flex;gap:7px;margin-bottom:16px}
+.tab{
+  border:2.5px solid #111;border-radius:10px;padding:8px 15px;
+  font:800 12px Inter,sans-serif;background:#fff;transition:.12s;
+  display:flex;align-items:center;gap:7px
+}
+.tab:hover{box-shadow:3px 3px 0 #111}
+.tab.active{background:var(--yellow);box-shadow:3px 3px 0 #111}
+
+/* ─── DROP ZONE ─── */
+.drop-zone{
+  border:3px dashed #bbb;border-radius:15px;padding:0;
+  background:linear-gradient(145deg,#f7fff9,#fffde0);
+  transition:.15s;overflow:hidden;position:relative
+}
+.drop-zone.drag{
+  border-color:#111;background:#e6ffef;
+  transform:translate(-2px,-2px);box-shadow:6px 6px 0 #111
+}
+.drop-zone.has-files{border-style:solid;border-color:#111;background:#fff}
+.drop-inner{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding:28px 18px;gap:10px
+}
+.drop-icon-wrap{
+  width:64px;height:64px;border:3px solid #111;border-radius:16px;
+  background:#fff;box-shadow:4px 4px 0 #111;display:grid;place-items:center
+}
+.drop-title{font-size:17px;font-weight:950;letter-spacing:-.03em}
+.drop-sub{font:600 13px Inter,sans-serif;color:var(--muted)}
+.drop-chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:2px}
+.chip{border:2px solid #111;border-radius:999px;padding:4px 10px;font:700 10px ui-monospace,monospace;background:#fff}
+.drop-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+.drop-actions .mbtn{font-size:12px;padding:8px 12px}
+
+/* file inputs hidden — triggered by buttons */
+#fileInput,#folderInput{position:absolute;width:0;height:0;opacity:0;pointer-events:none}
+
+/* file summary + list */
+.file-summary{
+  display:none;align-items:center;justify-content:space-between;gap:10px;
+  border:2.5px solid #111;border-radius:11px;padding:10px 12px;
+  background:var(--mint);margin-top:10px;font:800 12.5px Inter,sans-serif
+}
+.file-summary.show{display:flex}
+.file-list{display:grid;gap:7px;margin-top:10px;max-height:220px;overflow-y:auto}
+.file-row{
+  border:2px solid #111;border-radius:10px;padding:9px 12px;
+  display:grid;grid-template-columns:28px 1fr auto auto;gap:8px;align-items:center;
+  background:#fff
+}
+.file-row .fname{font-weight:900;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-row .fsize{font:700 11px ui-monospace,monospace;color:var(--muted);white-space:nowrap}
+.file-row .fremove{
+  width:26px;height:26px;border:2px solid #111;border-radius:7px;
+  background:#fff;display:grid;place-items:center;transition:.12s;cursor:pointer
+}
+.file-row .fremove:hover{background:var(--red)}
+.file-row .fremove:hover svg{stroke:#fff}
+
+/* project picker cards */
+.proj-search-wrap{position:relative;margin-bottom:10px}
+.proj-list{
+  display:grid;gap:8px;max-height:240px;overflow-y:auto;
+  border:2.5px solid #111;border-radius:12px;padding:10px;background:#fafafa
+}
+.proj-item{
+  border:2.5px solid #111;border-radius:11px;padding:12px 14px;
+  background:#fff;cursor:pointer;transition:.12s;
+  display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center
+}
+.proj-item:hover{box-shadow:3px 3px 0 #111;transform:translate(-1px,-1px)}
+.proj-item.selected{background:var(--mint);box-shadow:3px 3px 0 #111}
+.proj-item .pname{font-weight:900;font-size:14px}
+.proj-item .pmeta{font:700 10px ui-monospace,monospace;color:var(--muted);margin-top:3px}
+.proj-item .pcheck{
+  width:22px;height:22px;border:2.5px solid #111;border-radius:50%;
+  display:grid;place-items:center;background:#fff;flex-shrink:0
+}
+.proj-item.selected .pcheck{background:var(--ink)}
+.proj-item.selected .pcheck svg{stroke:#fff}
+.proj-empty,.proj-loading{text-align:center;padding:18px;font:700 13px Inter,sans-serif;color:var(--muted)}
+
+/* ─── ROW2 ─── */
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* ─── FRAMEWORK GRID ─── */
+.fw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.fw-pill{
+  border:2.5px solid #111;border-radius:12px;padding:11px 8px 9px;
+  background:#fff;cursor:pointer;text-align:center;transition:.12s;user-select:none
+}
+.fw-pill:hover{box-shadow:3px 3px 0 #111;transform:translate(-1px,-1px)}
+.fw-pill.selected{background:var(--yellow);box-shadow:3px 3px 0 #111;transform:translate(-1px,-1px)}
+.fw-label{font:900 11.5px Inter,sans-serif;margin-top:6px;display:block;letter-spacing:-.02em}
+
+/* ─── ENV ─── */
+.env-list{display:grid;gap:7px;margin-bottom:10px}
+.env-row{display:grid;grid-template-columns:1fr 1fr 30px;gap:6px;align-items:center}
+.env-row .inp{font-size:12.5px;padding:9px 10px}
+.env-del{
+  width:28px;height:28px;border:2px solid #111;border-radius:8px;
+  background:#fff;display:grid;place-items:center;transition:.12s
+}
+.env-del:hover{background:var(--red)}
+.env-del:hover svg{stroke:#fff}
+.add-env-btn{
+  border:2.5px dashed #bbb;border-radius:10px;padding:9px;width:100%;
+  font:700 12px Inter,sans-serif;color:var(--muted);transition:.12s;
+  display:flex;align-items:center;justify-content:center;gap:6px
+}
+.add-env-btn:hover{border-color:#111;color:#111}
+
+/* ─── DEPLOY BTN ─── */
+.deploy-btn{
+  width:100%;margin-top:16px;border:var(--border);border-radius:14px;
+  padding:15px;background:var(--mint);font:950 15px Inter,sans-serif;
+  box-shadow:5px 5px 0 #111;letter-spacing:-.02em;transition:.12s;
+  display:flex;align-items:center;justify-content:center;gap:10px
+}
+.deploy-btn:hover:not(:disabled){transform:translate(-2px,-2px);box-shadow:7px 7px 0 #111}
+.deploy-btn:active:not(:disabled){transform:translate(1px,1px);box-shadow:3px 3px 0 #111}
+.deploy-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:2px 2px 0 #111;transform:none}
+.deploy-btn.busy{background:var(--yellow)}
+.deploy-btn.done{background:var(--mint)}
+.deploy-btn.fail{background:var(--red);color:#fff}
+
+.spinner{
+  width:18px;height:18px;border:3px solid rgba(0,0,0,.2);
+  border-top-color:#111;border-radius:50%;animation:spin .65s linear infinite;display:none
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── LOG TERMINAL ─── */
+.terminal{
+  background:#111;border-radius:12px;padding:14px;
+  font:600 12px ui-monospace,monospace;color:#e0e0e0;
+  min-height:260px;max-height:400px;overflow-y:auto;
+  line-height:1.65;margin-top:14px
+}
+.terminal:empty::before{content:'Waiting for deploy...';opacity:.28}
+.log{display:flex;gap:8px;padding:1px 0}
+.log-ts{opacity:.3;font-size:11px;flex-shrink:0;margin-top:1px}
+.log.info .log-msg{color:#9bf4b1}
+.log.warn .log-msg{color:#ffe46a}
+.log.err .log-msg{color:#ff6b6b}
+.log.dim .log-msg{opacity:.45}
+
+/* ─── RESULT ─── */
+.result-box{margin-top:13px;border:var(--border);border-radius:13px;padding:14px;display:none}
+.result-box.show{display:block}
+.result-ok{background:#edfff3}
+.result-fail{background:#fff0f0}
+.result-lbl{font:800 10px ui-monospace,monospace;letter-spacing:1px;opacity:.55;margin-bottom:9px}
+.result-url{
+  border:2.5px solid #111;border-radius:9px;padding:10px 12px;
+  font:700 12px ui-monospace,monospace;background:#fff;
+  word-break:break-all;display:block;margin-bottom:10px
+}
+.btn-row{display:flex;gap:7px;flex-wrap:wrap}
+
+/* ─── MINI BTN ─── */
+.mbtn{
+  border:2.5px solid #111;border-radius:9px;padding:8px 13px;
+  background:#fff;font:800 12px Inter,sans-serif;
+  display:flex;align-items:center;gap:6px;transition:.12s
+}
+.mbtn:hover{box-shadow:2px 2px 0 #111;transform:translate(-1px,-1px)}
+.mbtn.primary{background:var(--mint)}
+
+/* ─── INFO ─── */
+.info-grid{display:grid;gap:9px}
+.info-item{border:2px solid #111;border-radius:11px;padding:11px 13px;background:#fff}
+.info-item b{display:block;font:800 10px ui-monospace,monospace;text-transform:uppercase;opacity:.55;margin-bottom:4px}
+.info-item span{font-size:13px;font-weight:700;color:#444;line-height:1.45}
+.info-item code{
+  font-family:ui-monospace,monospace;font-size:11px;background:#f3f3f3;
+  border:1.5px solid #ddd;border-radius:5px;padding:1px 5px
+}
+
+/* ─── HISTORY ─── */
+.hist-list{display:grid;gap:8px;margin-top:4px}
+.hist-row{
+  border:2px solid #111;border-radius:12px;padding:12px 14px;
+  display:grid;grid-template-columns:12px 1fr auto auto;gap:12px;
+  align-items:center;background:#fff
+}
+.hist-dot{width:10px;height:10px;border-radius:50%;border:2px solid #111;flex-shrink:0}
+.hist-dot.ready{background:#25cc62}
+.hist-dot.err{background:var(--red)}
+.hist-dot.building{background:var(--yellow);animation:pulse-bg .8s infinite alternate}
+.hist-name{font-weight:900;font-size:13.5px}
+.hist-meta{font:700 10px ui-monospace,monospace;color:var(--muted);margin-top:3px}
+.empty-msg{text-align:center;padding:30px;color:var(--muted);font-weight:700;font-size:14px}
+
+/* ─── STATS BAR ─── */
+.stats-bar{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;
+  margin-bottom:22px
+}
+.stat-card{
+  background:var(--card);border:var(--border);border-radius:var(--r);
+  box-shadow:var(--sh);padding:14px 16px;display:flex;flex-direction:column;gap:4px
+}
+.stat-label{font:800 10px ui-monospace,monospace;letter-spacing:1.5px;text-transform:uppercase;opacity:.45}
+.stat-value{font-weight:950;font-size:28px;letter-spacing:-.03em;line-height:1.1}
+.stat-card.mint .stat-value{color:#1a9c4a}
+.stat-card.red .stat-value{color:#d63031}
+.stat-card.yellow .stat-value{color:#c9a000}
+.stat-sub{font:700 10px ui-monospace,monospace;color:var(--muted);margin-top:2px}
+@media(max-width:780px){.stats-bar{grid-template-columns:repeat(2,1fr)}}
+
+/* ─── TOAST ─── */
+.toast{
+  position:fixed;right:20px;bottom:20px;
+  background:#111;color:#fff;border:3px solid #111;border-radius:13px;
+  padding:12px 16px;font:800 13px Inter,sans-serif;
+  transform:translateY(160%);transition:.22s;z-index:100;max-width:340px
+}
+.toast.show{transform:none}
+
+/* ─── MOB ─── */
+.mob-btn{
+  display:none;position:fixed;top:12px;left:12px;z-index:40;
+  border:3px solid #111;border-radius:10px;background:#fff;
+  width:42px;height:42px;box-shadow:3px 3px 0 #111;
+  align-items:center;justify-content:center
+}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:940px){.grid{grid-template-columns:1fr}.row2{grid-template-columns:1fr}}
+@media(max-width:780px){
+  .sidebar{transform:translateX(-110%);transition:.2s}
+  .sidebar.open{transform:none}
+  .mob-btn{display:flex}
+  .main{margin-left:0;padding:70px 14px 28px}
+  .top{flex-direction:column;align-items:flex-start}
+  .fw-grid{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+</head>
+<body>
+
+<!-- ── MOB BTN ── -->
+<button class="mob-btn" id="mobBtn" aria-label="Menu">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round">
+    <line x1="3" y1="5" x2="17" y2="5"/>
+    <line x1="3" y1="10" x2="17" y2="10"/>
+    <line x1="3" y1="15" x2="17" y2="15"/>
+  </svg>
+</button>
+
+<!-- ── SIDEBAR ── -->
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="brand-mark">
+      <!-- Vercel triangle -->
+      <svg width="22" height="20" viewBox="0 0 22 20" fill="#111">
+        <path d="M11 0L22 20H0L11 0Z"/>
+      </svg>
+    </div>
+    <div>
+      <div class="brand-text">Vercel Deploy</div>
+      <div class="brand-sub">LIANIX TOOLS</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <span class="nav-sep">Deploy</span>
+    <a href="#" class="active" id="navDeploy">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 1L15 14H1L8 1Z"/>
+      </svg>
+      New Deployment
+    </a>
+    <a href="#" id="navHistory">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8" cy="8" r="6.5"/>
+        <polyline points="8,4.5 8,8 10.5,10"/>
+      </svg>
+      Deploy History
+    </a>
+    <span class="nav-sep">Config</span>
+    <a href="#" id="navToken">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6.5" cy="9.5" r="3.5"/>
+        <line x1="9.5" y1="6.5" x2="15" y2="1"/>
+        <line x1="13" y1="3" x2="14.5" y2="4.5"/>
+      </svg>
+      API Token
+    </a>
+    <a href="#" id="navEnv">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8" cy="8" r="2.5"/>
+        <path d="M8 1.5V4M8 12V14.5M1.5 8H4M12 8H14.5"/>
+        <path d="M3.4 3.4l1.8 1.8M10.8 10.8l1.8 1.8M3.4 12.6l1.8-1.8M10.8 5.2l1.8-1.8"/>
+      </svg>
+      Env Variables
+    </a>
+  </nav>
+  <div class="sidebar-foot">Vercel Deploy Tool &bull; REST API v13</div>
+</aside>
+
+<!-- ── MAIN ── -->
+<main class="main">
+<div class="shell">
+
+  <!-- TOP -->
+  <div class="top">
+    <div>
+      <div class="eyebrow">Lianix Tools / Vercel</div>
+      <h1 class="title">Deploy.<br>Instantly.</h1>
+      <p class="sub">Push project ke Vercel langsung dari sini. Paste repo URL atau drag-drop file, set env vars, dan deploy dalam hitungan detik via Vercel REST API.</p>
+    </div>
+    <div class="api-pill">
+      <span class="live-dot" id="apiDot"></span>
+      <span id="apiStatus">Token belum diset</span>
+    </div>
+  </div>
+
+  <!-- STATS (MongoDB) -->
+  <div class="stats-bar" id="statsBar">
+    <div class="stat-card">
+      <div class="stat-label">Total Deploy</div>
+      <div class="stat-value" id="statTotal">—</div>
+      <div class="stat-sub" id="statLast">memuat…</div>
+    </div>
+    <div class="stat-card mint">
+      <div class="stat-label">Sukses</div>
+      <div class="stat-value" id="statSuccess">—</div>
+      <div class="stat-sub">status READY</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">Building</div>
+      <div class="stat-value" id="statBuilding">—</div>
+      <div class="stat-sub">sedang proses</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Gagal</div>
+      <div class="stat-value" id="statFailed">—</div>
+      <div class="stat-sub">error / canceled</div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="mainContent">
+    <div class="grid">
+
+      <!-- LEFT -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- TOKEN CARD -->
+        <div class="card" id="tokenCard">
+          <div class="card-head">
+            <h2>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6.5" cy="9.5" r="3.5"/>
+                <line x1="9.5" y1="6.5" x2="15" y2="1"/>
+                <line x1="13" y1="3" x2="14.5" y2="4.5"/>
+              </svg>
+              Vercel API Token
+            </h2>
+            <span class="badge idle" id="tokenBadge">NOT SET</span>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label class="label">Token</label>
+              <div class="pw-wrap">
+                <input class="inp" type="password" id="tokenInput" placeholder="Paste token di sini..." autocomplete="off" spellcheck="false">
+                <button class="pw-toggle" id="tokenToggle" title="Tampilkan/sembunyikan">
+                  <svg id="eyeIcon" width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#888" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 9C3 5 6 3 9 3s6 2 8 6c-2 4-5 6-8 6s-6-2-8-6Z"/>
+                    <circle cx="9" cy="9" r="2.5"/>
+                  </svg>
+                </button>
+              </div>
+              <p class="hint">Buat token di <strong>vercel.com/account/tokens</strong> &rarr; Create. Token disimpan di localStorage.</p>
+            </div>
+            <div class="btn-row">
+              <button class="mbtn primary" id="saveToken">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="2,7 5.5,10.5 12,3"/>
+                </svg>
+                Simpan &amp; Verifikasi
+              </button>
+              <button class="mbtn" id="clearToken">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round">
+                  <line x1="2" y1="2" x2="12" y2="12"/>
+                  <line x1="12" y1="2" x2="2" y2="12"/>
+                </svg>
+                Hapus
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- DEPLOY CARD -->
+        <div class="card">
+          <div class="card-head">
+            <h2>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="8,1 15,15 1,15"/>
+              </svg>
+              Konfigurasi Deploy
+            </h2>
+            <span class="badge idle" id="teamBadge" style="display:none"></span>
+          </div>
+          <div class="card-body">
+
+            <div class="token-gate-msg show" id="tokenGateMsg">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6.5" cy="10" r="3.5"/>
+                <line x1="9.5" y1="7" x2="15" y2="1.5"/>
+                <line x1="13" y1="3.5" x2="14.5" y2="5"/>
+              </svg>
+              <span>Masukkan &amp; verifikasi <strong>Vercel API Token</strong> di atas dulu sebelum deploy.</span>
+            </div>
+
+            <div class="form-lock locked" id="deployFormLock">
+
+            <!-- TABS -->
+            <div class="tabs">
+              <button class="tab active" data-tab="git">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="4" cy="11" r="1.5"/>
+                  <circle cx="10" cy="3" r="1.5"/>
+                  <circle cx="10" cy="11" r="1.5"/>
+                  <path d="M4 9.5V7a3 3 0 0 1 3-3h1.5"/>
+                  <line x1="10" y1="4.5" x2="10" y2="9.5"/>
+                </svg>
+                Git Repository
+              </button>
+              <button class="tab" data-tab="files">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M2 3h4l1.5 2H12v7H2z"/>
+                </svg>
+                Upload Files
+              </button>
+            </div>
+
+            <!-- GIT -->
+            <div id="tabGit">
+              <div class="field">
+                <label class="label">Repository URL</label>
+                <input class="inp" type="url" id="repoUrl" placeholder="https://github.com/username/repo">
+                <p class="hint">GitHub, GitLab, atau Bitbucket</p>
+              </div>
+              <div class="row2">
+                <div class="field">
+                  <label class="label">Branch</label>
+                  <input class="inp" type="text" id="repoBranch" value="main">
+                </div>
+                <div class="field">
+                  <label class="label">Root Directory</label>
+                  <input class="inp" type="text" id="repoRoot" placeholder="./ (opsional)">
+                </div>
+              </div>
+            </div>
+
+            <!-- FILES -->
+            <div id="tabFiles" style="display:none">
+              <div class="field">
+                <label class="label">Upload Files Proyek</label>
+                <div class="drop-zone" id="dropZone">
+                  <input type="file" id="fileInput" multiple>
+                  <input type="file" id="folderInput" webkitdirectory directory multiple>
+                  <div class="drop-inner" id="dropInner">
+                    <div class="drop-icon-wrap">
+                      <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 19V9M9 13l5-5 5 5"/>
+                        <path d="M5 22h18"/>
+                      </svg>
+                    </div>
+                    <div class="drop-title">Drop file / folder di sini</div>
+                    <div class="drop-sub">atau pilih lewat tombol di bawah</div>
+                    <div class="drop-chips">
+                      <span class="chip">HTML / CSS / JS</span>
+                      <span class="chip">ZIP</span>
+                      <span class="chip">FOLDER</span>
+                    </div>
+                    <div class="drop-actions">
+                      <button type="button" class="mbtn primary" id="btnPickFiles">
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M2 3h4l1.5 2H11v6H2z"/>
+                        </svg>
+                        Pilih File
+                      </button>
+                      <button type="button" class="mbtn" id="btnPickFolder">
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M1.5 3.5h3l1.2 1.5H11.5v6H1.5z"/>
+                        </svg>
+                        Pilih Folder
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="file-summary" id="fileSummary">
+                  <span id="fileSummaryText">0 file</span>
+                  <button type="button" class="mbtn" id="btnClearFiles" style="padding:6px 10px;font-size:11px">Hapus Semua</button>
+                </div>
+                <div class="file-list" id="fileList"></div>
+              </div>
+            </div>
+
+            <!-- PROJECT MODE -->
+            <div class="field" style="margin-top:8px">
+              <label class="label">Mode Project</label>
+              <div class="mode-pills">
+                <button type="button" class="mode-pill active" id="modeNew" data-mode="new">
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round">
+                    <line x1="7.5" y1="3" x2="7.5" y2="12"/>
+                    <line x1="3" y1="7.5" x2="12" y2="7.5"/>
+                  </svg>
+                  Project Baru
+                </button>
+                <button type="button" class="mode-pill" id="modeExisting" data-mode="existing">
+                  <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="3" width="11" height="10" rx="1.5"/>
+                    <path d="M5 3V2h5v1"/>
+                  </svg>
+                  Project yang Ada
+                </button>
+              </div>
+            </div>
+
+            <!-- NEW PROJECT -->
+            <div id="projectNewBlock">
+              <div class="row2">
+                <div class="field">
+                  <label class="label">Nama Project Baru</label>
+                  <input class="inp" type="text" id="projectName" placeholder="my-awesome-app" pattern="[a-z0-9-]+">
+                  <p class="hint">Huruf kecil, angka, dan tanda hubung saja. Project baru akan dibuat otomatis saat deploy.</p>
+                </div>
+                <div class="field">
+                  <label class="label">Team Slug (opsional)</label>
+                  <input class="inp" type="text" id="teamSlug" placeholder="team-slug">
+                  <p class="hint">Kosongkan jika akun personal</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- EXISTING PROJECT -->
+            <div id="projectExistingBlock" style="display:none">
+              <div class="field">
+                <label class="label">Team Slug (opsional)</label>
+                <div style="display:flex;gap:8px;align-items:flex-start">
+                  <input class="inp" type="text" id="teamSlugExisting" placeholder="team-slug (kosongkan jika personal)" style="flex:1">
+                  <button type="button" class="mbtn" id="refreshProjects" title="Refresh daftar">
+                    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 2.5A5.5 5.5 0 1 0 12 7"/>
+                      <polyline points="9,1 11.5,2.5 10,5"/>
+                    </svg>
+                    Refresh
+                  </button>
+                </div>
+                <p class="hint" id="projectListHint">Daftar project dari akun Vercel kamu</p>
+              </div>
+              <div class="field">
+                <label class="label">Pilih Project</label>
+                <div class="proj-search-wrap">
+                  <input class="inp" type="search" id="projectSearch" placeholder="Cari nama project…">
+                </div>
+                <div class="proj-list" id="projectList">
+                  <div class="proj-loading">Verifikasi token dulu…</div>
+                </div>
+                <!-- hidden value for deploy logic -->
+                <input type="hidden" id="existingProject" value="">
+              </div>
+            </div>
+
+            <!-- FRAMEWORK -->
+            <div class="field">
+              <label class="label">Framework</label>
+              <div class="fw-grid" id="fwGrid">
+                <div class="fw-pill selected" data-fw="">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="10" cy="10" r="3"/>
+                    <path d="M10 1v3M10 16v3M1 10h3M16 10h3"/>
+                    <path d="M3.3 3.3l2.1 2.1M14.6 14.6l2.1 2.1M3.3 16.7l2.1-2.1M14.6 5.4l2.1-2.1"/>
+                  </svg>
+                  <span class="fw-label">Auto Detect</span>
+                </div>
+                <div class="fw-pill" data-fw="nextjs">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <polygon points="10,1 19,19 1,19" fill="#111"/>
+                  </svg>
+                  <span class="fw-label">Next.js</span>
+                </div>
+                <div class="fw-pill" data-fw="vite">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="10,1 18,15 2,15" stroke="#111" fill="none"/>
+                    <line x1="10" y1="6" x2="10" y2="12"/>
+                    <line x1="7" y1="10" x2="13" y2="10"/>
+                  </svg>
+                  <span class="fw-label">Vite</span>
+                </div>
+                <div class="fw-pill" data-fw="create-react-app">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.8">
+                    <ellipse cx="10" cy="10" rx="9" ry="4" transform="rotate(0 10 10)"/>
+                    <ellipse cx="10" cy="10" rx="9" ry="4" transform="rotate(60 10 10)"/>
+                    <ellipse cx="10" cy="10" rx="9" ry="4" transform="rotate(120 10 10)"/>
+                    <circle cx="10" cy="10" r="1.8" fill="#111"/>
+                  </svg>
+                  <span class="fw-label">React CRA</span>
+                </div>
+                <div class="fw-pill" data-fw="nuxtjs">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M2 17L8 6l4 7"/>
+                    <path d="M9 14l2.5-4.5L16 17"/>
+                    <line x1="6" y1="17" x2="18" y2="17"/>
+                  </svg>
+                  <span class="fw-label">Nuxt.js</span>
+                </div>
+                <div class="fw-pill" data-fw="svelte">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round">
+                    <path d="M15 3c2 2 1.5 6-2 8s-7 2-6 5"/>
+                    <path d="M5 17c-2-2-1.5-6 2-8s7-2 6-5"/>
+                  </svg>
+                  <span class="fw-label">Svelte</span>
+                </div>
+                <div class="fw-pill" data-fw="astro">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10 2C10 2 6 10 4 14c2-1 4-1.5 6-1.5S14 13 16 14C14 10 10 2 10 2Z"/>
+                    <path d="M8 12.5c0 2 1 3.5 2 4"/>
+                  </svg>
+                  <span class="fw-label">Astro</span>
+                </div>
+                <div class="fw-pill" data-fw="remix">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="14" height="14" rx="2"/>
+                    <path d="M7 10h4a2 2 0 0 0 0-4H7v8"/>
+                    <path d="M11 10l3 4"/>
+                  </svg>
+                  <span class="fw-label">Remix</span>
+                </div>
+                <div class="fw-pill" data-fw="static">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="16" height="13" rx="2"/>
+                    <line x1="2" y1="8" x2="18" y2="8"/>
+                    <circle cx="5" cy="6" r=".8" fill="#111"/>
+                    <circle cx="7.5" cy="6" r=".8" fill="#111"/>
+                  </svg>
+                  <span class="fw-label">Static</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- BUILD SETTINGS -->
+            <div class="row2">
+              <div class="field">
+                <label class="label">Build Command</label>
+                <input class="inp" type="text" id="buildCmd" placeholder="npm run build (auto)">
+              </div>
+              <div class="field">
+                <label class="label">Output Directory</label>
+                <input class="inp" type="text" id="outputDir" placeholder="dist / .next / out (auto)">
+              </div>
+            </div>
+
+            <!-- ENV VARS -->
+            <div class="field">
+              <label class="label">Environment Variables</label>
+              <div class="env-list" id="envList"></div>
+              <button class="add-env-btn" id="addEnvBtn">
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+                  <line x1="6.5" y1="1" x2="6.5" y2="12"/>
+                  <line x1="1" y1="6.5" x2="12" y2="6.5"/>
+                </svg>
+                Tambah variable
+              </button>
+            </div>
+
+            <button class="deploy-btn" id="deployBtn" disabled>
+              <span class="spinner" id="btnSpinner"></span>
+              <svg id="btnIcon" width="16" height="14" viewBox="0 0 16 14" fill="#111">
+                <polygon points="8,0 16,14 0,14"/>
+              </svg>
+              <span id="btnText">Deploy ke Vercel</span>
+            </button>
+
+            </div><!-- /deployFormLock -->
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- LOGS CARD -->
+        <div class="card">
+          <div class="card-head">
+            <h2>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="1.5" y="2" width="13" height="12" rx="2"/>
+                <line x1="4" y1="6" x2="12" y2="6"/>
+                <line x1="4" y1="9" x2="9" y2="9"/>
+              </svg>
+              Deploy Logs
+            </h2>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="badge idle" id="deployStatus">IDLE</span>
+              <button class="mbtn" id="clearLogs" style="padding:5px 9px">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round">
+                  <path d="M2 3h8M5 3V2h2v1M3.5 3l.5 7h4l.5-7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="terminal" id="logTerminal"></div>
+
+            <!-- Success -->
+            <div class="result-box result-ok" id="resultBox">
+              <div class="result-lbl">DEPLOYMENT BERHASIL</div>
+              <a class="result-url" id="resultUrl" href="#" target="_blank" rel="noopener"></a>
+              <div class="btn-row">
+                <button class="mbtn primary" id="openBtn">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 2H2v9h9V8"/>
+                    <path d="M8 2h3v3"/>
+                    <line x1="5.5" y1="7.5" x2="11" y2="2"/>
+                  </svg>
+                  Buka Site
+                </button>
+                <button class="mbtn" id="copyUrlBtn">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="4" width="7.5" height="7.5" rx="1.5"/>
+                    <path d="M9 4V2.5A1.5 1.5 0 0 0 7.5 1H2.5A1.5 1.5 0 0 0 1 2.5v5A1.5 1.5 0 0 0 2.5 9H4"/>
+                  </svg>
+                  Copy URL
+                </button>
+                <button class="mbtn" id="dashBtn">Dashboard</button>
+              </div>
+            </div>
+
+            <!-- Error -->
+            <div class="result-box result-fail" id="errorBox">
+              <div class="result-lbl" style="color:var(--red)">DEPLOY GAGAL</div>
+              <div id="errorMsg" style="font:700 13px Inter,sans-serif;color:#c00;margin-top:6px;line-height:1.5"></div>
+              <div class="btn-row" style="margin-top:10px">
+                <button class="mbtn" id="retryBtn">
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 2.5A5.5 5.5 0 1 0 12 7"/>
+                    <polyline points="9,1 11.5,2.5 10,5"/>
+                  </svg>
+                  Coba Lagi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- INFO CARD -->
+        <div class="card">
+          <div class="card-head">
+            <h2>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="8" cy="8" r="6.5"/>
+                <line x1="8" y1="7" x2="8" y2="11.5"/>
+                <circle cx="8" cy="4.5" r=".8" fill="#111" stroke="none"/>
+              </svg>
+              Info API
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="info-grid">
+              <div class="info-item"><b>User / Akun</b><span id="infoUser">Belum terverifikasi</span></div>
+              <div class="info-item"><b>Token Scope</b><span id="infoScope">—</span></div>
+              <div class="info-item"><b>Cara dapat token</b><span>vercel.com &rarr; Account Settings &rarr; Tokens &rarr; Create</span></div>
+              <div class="info-item"><b>Endpoint Deploy</b><span><code>api.vercel.com/v13/deployments</code></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY SECTION -->
+  <div id="historySection" style="display:none;margin-top:0">
+    <div class="card">
+      <div class="card-head">
+        <h2>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="8" r="6.5"/>
+            <polyline points="8,4.5 8,8 10.5,10"/>
+          </svg>
+          Deploy History
+        </h2>
+        <button class="mbtn" id="clearHistory">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h9M5.5 3V2h2v1M3.5 3l.5 7.5h5l.5-7.5"/>
+          </svg>
+          Hapus Semua
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="hist-list" id="histList">
+          <div class="empty-msg">Belum ada deploy.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ─── UTILS ───
+const $  = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let toastTimer;
+function toast(msg, dur=2800) {
+  clearTimeout(toastTimer);
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  toastTimer = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function ts() {
+  return new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function fmtBytes(n) {
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  return (n/1048576).toFixed(2) + ' MB';
+}
+
+// ─── LOG ───
+function log(msg, type='') {
+  const t = $('logTerminal');
+  const row = document.createElement('div');
+  row.className = 'log ' + type;
+  const ts_el = document.createElement('span');
+  ts_el.className = 'log-ts';
+  ts_el.textContent = '[' + ts() + ']';
+  const msg_el = document.createElement('span');
+  msg_el.className = 'log-msg';
+  msg_el.textContent = msg;
+  row.appendChild(ts_el);
+  row.appendChild(msg_el);
+  t.appendChild(row);
+  t.scrollTop = t.scrollHeight;
+}
+
+$('clearLogs').onclick = () => {
+  $('logTerminal').innerHTML = '';
+  $('resultBox').classList.remove('show');
+  $('errorBox').classList.remove('show');
+  setStatus('idle', 'IDLE');
+};
+
+// ─── STATUS ───
+function setStatus(type, text) {
+  const b = $('deployStatus');
+  b.className = 'badge ' + type;
+  b.textContent = text;
+}
+
+// ─── TOKEN ───
+let TOKEN = '';
+try { TOKEN = localStorage.getItem('vcl_token') || ''; } catch {}
+
+let tokenOk = false;
+
+function setFormLocked(locked) {
+  const lock = $('deployFormLock');
+  const gate = $('tokenGateMsg');
+  if (lock) lock.classList.toggle('locked', locked);
+  if (gate) gate.classList.toggle('show', locked);
+  $('deployBtn').disabled = locked || !tokenOk;
+}
+
+function setApiDot(state) {
+  const dot = $('apiDot');
+  const lbl = $('apiStatus');
+  dot.className = 'live-dot ' + (state === 'ok' ? 'on' : state === 'err' ? 'err' : '');
+  lbl.textContent = state === 'ok' ? 'Token aktif' : state === 'err' ? 'Token invalid' : 'Token belum diset';
+  $('tokenBadge').className = 'badge ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : 'idle');
+  $('tokenBadge').textContent = state === 'ok' ? 'VERIFIED' : state === 'err' ? 'INVALID' : 'NOT SET';
+  tokenOk = state === 'ok';
+  setFormLocked(state !== 'ok');
+}
+
+if (TOKEN) { $('tokenInput').value = TOKEN; verifyToken(TOKEN); }
+else setApiDot('');
+
+// show/hide toggle
+let pwVisible = false;
+$('tokenToggle').onclick = () => {
+  pwVisible = !pwVisible;
+  $('tokenInput').type = pwVisible ? 'text' : 'password';
+};
+
+$('saveToken').onclick = async () => {
+  const v = $('tokenInput').value.trim();
+  if (!v) { toast('Token kosong'); return; }
+  TOKEN = v;
+  try { localStorage.setItem('vcl_token', TOKEN); } catch {}
+  await verifyToken(TOKEN);
+};
+
+$('clearToken').onclick = () => {
+  TOKEN = '';
+  tokenOk = false;
+  $('tokenInput').value = '';
+  try { localStorage.removeItem('vcl_token'); } catch {}
+  setApiDot('');
+  $('infoUser').textContent = 'Belum terverifikasi';
+  $('infoScope').textContent = '—';
+  // reset project list
+  cachedProjects = [];
+  selectedProjectName = '';
+  $('existingProject').value = '';
+  const pl = $('projectList');
+  if (pl) pl.innerHTML = '<div class="proj-loading">Verifikasi token dulu…</div>';
+  toast('Token dihapus');
+};
+
+async function verifyToken(tok) {
+  log('Verifikasi token...', 'dim');
+  try {
+    const r = await fetch('https://api.vercel.com/v2/user', {
+      headers: { Authorization: 'Bearer ' + tok }
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const u = d.user || {};
+    $('infoUser').textContent = (u.name || u.username || '—') + (u.email ? '  —  ' + u.email : '');
+    $('infoScope').textContent = 'Bearer token · Full Access';
+    setApiDot('ok');
+    log('Token valid — ' + (u.name || u.username || 'OK'), 'info');
+    toast('Token terverifikasi — form deploy terbuka');
+    // auto-load projects for existing mode
+    loadProjects();
+  } catch(e) {
+    setApiDot('err');
+    log('Token gagal: ' + e.message, 'err');
+    toast('Token invalid atau expired');
+  }
+}
+
+// ─── PROJECT MODE (baru / existing) ───
+let projectMode = 'new'; // 'new' | 'existing'
+let cachedProjects = [];
+let selectedProjectName = '';
+
+function setProjectMode(mode) {
+  projectMode = mode;
+  $('modeNew').classList.toggle('active', mode === 'new');
+  $('modeExisting').classList.toggle('active', mode === 'existing');
+  $('projectNewBlock').style.display = mode === 'new' ? '' : 'none';
+  $('projectExistingBlock').style.display = mode === 'existing' ? '' : 'none';
+  if (mode === 'existing' && tokenOk) loadProjects();
+}
+
+$('modeNew').onclick = () => setProjectMode('new');
+$('modeExisting').onclick = () => setProjectMode('existing');
+$('refreshProjects').onclick = () => loadProjects(true);
+
+async function loadProjects(force) {
+  const listEl = $('projectList');
+  const hint = $('projectListHint');
+  if (!TOKEN || !tokenOk) {
+    listEl.innerHTML = '<div class="proj-loading">Verifikasi token dulu…</div>';
+    return;
+  }
+  if (!force && cachedProjects.length) {
+    renderProjectList(cachedProjects);
+    return;
+  }
+  listEl.innerHTML = '<div class="proj-loading">Memuat project…</div>';
+  hint.textContent = 'Mengambil daftar project dari Vercel…';
+  try {
+    let url = 'https://api.vercel.com/v9/projects?limit=100';
+    const team = ($('teamSlugExisting').value || $('teamSlug').value || '').trim();
+    if (team) url += '&teamId=' + encodeURIComponent(team);
+
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error?.message || ('HTTP ' + r.status));
+    }
+    const data = await r.json();
+    const list = data.projects || data || [];
+    cachedProjects = Array.isArray(list) ? list : [];
+    renderProjectList(cachedProjects);
+    hint.textContent = cachedProjects.length
+      ? cachedProjects.length + ' project ditemukan — klik untuk memilih'
+      : 'Belum ada project di akun ini — buat project baru saja';
+    log('Project dimuat: ' + cachedProjects.length, 'dim');
+  } catch (e) {
+    listEl.innerHTML = '<div class="proj-empty">Gagal memuat: ' + esc(e.message) + '</div>';
+    hint.textContent = 'Gagal: ' + e.message;
+    log('Gagal load projects: ' + e.message, 'err');
+    toast('Gagal memuat daftar project');
+  }
+}
+
+function renderProjectList(list) {
+  const listEl = $('projectList');
+  const q = ($('projectSearch').value || '').trim().toLowerCase();
+  const filtered = q
+    ? list.filter(p => (p.name || '').toLowerCase().includes(q) || (p.id || '').toLowerCase().includes(q))
+    : list;
+
+  if (!filtered.length) {
+    listEl.innerHTML = '<div class="proj-empty">' +
+      (list.length ? 'Tidak ada yang cocok dengan pencarian' : 'Tidak ada project') +
+      '</div>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map(p => {
+    const name = p.name || p.id || '';
+    const fw = p.framework || 'auto';
+    const updated = p.updatedAt
+      ? new Date(p.updatedAt).toLocaleDateString('id-ID')
+      : '';
+    const sel = name === selectedProjectName ? ' selected' : '';
+    return `
+      <div class="proj-item${sel}" data-name="${esc(name)}">
+        <div>
+          <div class="pname">${esc(name)}</div>
+          <div class="pmeta">${esc(fw)}${updated ? ' · ' + updated : ''}</div>
+        </div>
+        <div class="pcheck">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="2,6 5,9 10,3"/>
+          </svg>
+        </div>
+      </div>`;
+  }).join('');
+
+  listEl.querySelectorAll('.proj-item').forEach(item => {
+    item.onclick = () => {
+      selectedProjectName = item.dataset.name || '';
+      $('existingProject').value = selectedProjectName;
+      listEl.querySelectorAll('.proj-item').forEach(x => x.classList.remove('selected'));
+      item.classList.add('selected');
+      toast('Project dipilih: ' + selectedProjectName);
+    };
+  });
+}
+
+// search filter
+$('projectSearch').addEventListener('input', () => {
+  renderProjectList(cachedProjects);
+});
+
+// sync team slug — reload projects
+$('teamSlugExisting').addEventListener('change', () => {
+  if (projectMode === 'existing') loadProjects(true);
+});
+
+// ─── TABS ───
+let activeTab = 'git';
+document.querySelectorAll('[data-tab]').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('[data-tab]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTab = btn.dataset.tab;
+    $('tabGit').style.display   = activeTab === 'git'   ? '' : 'none';
+    $('tabFiles').style.display = activeTab === 'files' ? '' : 'none';
+  };
+});
+
+// ─── FILE DRAG + DROP ───
+let uploadedFiles = [];
+
+const dropZone  = $('dropZone');
+const fileInput = $('fileInput');
+const folderInput = $('folderInput');
+
+// drag visual
+['dragenter','dragover'].forEach(ev => {
+  dropZone.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); dropZone.classList.add('drag'); });
+});
+['dragleave','dragend'].forEach(ev => {
+  dropZone.addEventListener(ev, e => { e.stopPropagation(); dropZone.classList.remove('drag'); });
+});
+
+// drop
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  e.stopPropagation();
+  dropZone.classList.remove('drag');
+  if (e.dataTransfer.files && e.dataTransfer.files.length) {
+    handleFiles([...e.dataTransfer.files], true);
+  }
+});
+
+// buttons
+$('btnPickFiles').onclick = (e) => { e.preventDefault(); e.stopPropagation(); fileInput.click(); };
+$('btnPickFolder').onclick = (e) => { e.preventDefault(); e.stopPropagation(); folderInput.click(); };
+$('btnClearFiles').onclick = () => {
+  uploadedFiles = [];
+  renderFileList();
+  toast('Semua file dihapus');
+};
+
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFiles([...e.target.files], true);
+  e.target.value = '';
+});
+folderInput.addEventListener('change', e => {
+  if (e.target.files.length) handleFiles([...e.target.files], true);
+  e.target.value = '';
+});
+
+function handleFiles(files, append) {
+  // keep relative path for folder uploads (webkitRelativePath)
+  const incoming = files.filter(f => f && f.size >= 0);
+  if (append) {
+    // dedupe by name + size
+    const key = f => (f.webkitRelativePath || f.name) + '|' + f.size;
+    const map = new Map(uploadedFiles.map(f => [key(f), f]));
+    incoming.forEach(f => map.set(key(f), f));
+    uploadedFiles = [...map.values()];
+  } else {
+    uploadedFiles = incoming;
+  }
+  renderFileList();
+  if (incoming.length) toast(incoming.length + ' file ditambahkan');
+}
+
+function renderFileList() {
+  const list = $('fileList');
+  const summary = $('fileSummary');
+  const summaryText = $('fileSummaryText');
+
+  if (!uploadedFiles.length) {
+    list.innerHTML = '';
+    summary.classList.remove('show');
+    dropZone.classList.remove('has-files');
+    return;
+  }
+
+  dropZone.classList.add('has-files');
+  summary.classList.add('show');
+  const totalBytes = uploadedFiles.reduce((s, f) => s + (f.size || 0), 0);
+  summaryText.textContent = uploadedFiles.length + ' file · ' + fmtBytes(totalBytes);
+
+  list.innerHTML = uploadedFiles.map((f, i) => {
+    const displayName = f.webkitRelativePath || f.name;
+    return `
+    <div class="file-row">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="#111" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 2h7l4 4v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z"/>
+        <polyline points="11,2 11,6 15,6"/>
+      </svg>
+      <div style="min-width:0">
+        <div class="fname" title="${esc(displayName)}">${esc(displayName)}</div>
+        <div class="fsize">${fmtBytes(f.size)}</div>
+      </div>
+      <span class="fsize">${esc((f.type || 'file').split('/').pop())}</span>
+      <button type="button" class="fremove" data-idx="${i}" title="Hapus">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round">
+          <line x1="2" y1="2" x2="10" y2="10"/>
+          <line x1="10" y1="2" x2="2" y2="10"/>
+        </svg>
+      </button>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.fremove').forEach(btn => {
+    btn.onclick = () => {
+      const idx = Number(btn.dataset.idx);
+      uploadedFiles = uploadedFiles.filter((_, i) => i !== idx);
+      renderFileList();
+    };
+  });
+}
+
+// ─── FRAMEWORK ───
+let selectedFw = '';
+$('fwGrid').querySelectorAll('.fw-pill').forEach(el => {
+  el.onclick = () => {
+    $('fwGrid').querySelectorAll('.fw-pill').forEach(p => p.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedFw = el.dataset.fw;
+  };
+});
+
+// ─── ENV VARS ───
+let envRows = [];
+
+function renderEnv() {
+  const list = $('envList');
+  list.innerHTML = '';
+  envRows.forEach((row, i) => {
+    const div = document.createElement('div');
+    div.className = 'env-row';
+    div.innerHTML = `
+      <input class="inp" type="text" placeholder="KEY" value="${esc(row.key)}" data-i="${i}" data-f="key">
+      <input class="inp" type="text" placeholder="VALUE" value="${esc(row.val)}" data-i="${i}" data-f="val">
+      <button class="env-del" data-ri="${i}" title="Hapus">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="#111" stroke-width="2.2" stroke-linecap="round">
+          <line x1="1.5" y1="1.5" x2="9.5" y2="9.5"/>
+          <line x1="9.5" y1="1.5" x2="1.5" y2="9.5"/>
+        </svg>
+      </button>`;
+    list.appendChild(div);
+  });
+  list.querySelectorAll('input').forEach(inp => {
+    inp.oninput = e => { envRows[Number(e.target.dataset.i)][e.target.dataset.f] = e.target.value; };
+  });
+  list.querySelectorAll('.env-del').forEach(btn => {
+    btn.onclick = () => { envRows.splice(Number(btn.dataset.ri), 1); renderEnv(); };
+  });
+}
+$('addEnvBtn').onclick = () => { envRows.push({key:'',val:''}); renderEnv(); };
+
+// ─── DEPLOY ───
+let deployId = '';
+let pollInterval = null;
+
+$('deployBtn').onclick = startDeploy;
+$('retryBtn').onclick = startDeploy;
+
+async function startDeploy() {
+  if (!TOKEN || !tokenOk) {
+    toast('Verifikasi Vercel Token dulu');
+    $('tokenCard').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  // Resolve project name from mode
+  let projectName = '';
+  let teamSlug = '';
+
+  if (projectMode === 'existing') {
+    projectName = ($('existingProject').value || '').trim();
+    teamSlug = ($('teamSlugExisting').value || '').trim();
+    if (!projectName) {
+      toast('Pilih project yang sudah ada');
+      $('existingProject').focus();
+      return;
+    }
+  } else {
+    projectName = ($('projectName').value || '').trim();
+    teamSlug = ($('teamSlug').value || '').trim();
+    if (!projectName) {
+      // auto-generate only if empty
+      projectName = 'deploy-' + Date.now();
+      $('projectName').value = projectName;
+    }
+    // Vercel project name rules
+    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(projectName)) {
+      toast('Nama project: huruf kecil, angka, tanda hubung saja');
+      $('projectName').focus();
+      return;
+    }
+  }
+
+  // Source validation
+  if (activeTab === 'git') {
+    const repo = ($('repoUrl').value || '').trim();
+    if (!repo) {
+      toast('Isi Repository URL');
+      $('repoUrl').focus();
+      return;
+    }
+  } else {
+    if (!uploadedFiles || !uploadedFiles.length) {
+      toast('Upload minimal 1 file');
+      return;
+    }
+  }
+
+  clearInterval(pollInterval);
+  $('resultBox').classList.remove('show');
+  $('errorBox').classList.remove('show');
+  $('logTerminal').innerHTML = '';
+
+  setStatus('building', 'BUILDING');
+  setBtnState('busy', 'Deploying...');
+
+  try {
+    log(projectMode === 'existing'
+      ? 'Deploy ke project yang ada: "' + projectName + '"...'
+      : 'Membuat / deploy project baru: "' + projectName + '"...', 'info');
+
+    // ── payload base ──
+    // name = project name: existing → deploy ke project itu; baru → buat project
+    const payload = { name: projectName, target: 'production' };
+    if (selectedFw) payload.framework = selectedFw;
+    const buildCmd = $('buildCmd').value.trim();
+    const outDir   = $('outputDir').value.trim();
+    if (buildCmd) payload.buildCommand = buildCmd;
+    if (outDir)   payload.outputDirectory = outDir;
+    const rootDir = $('repoRoot').value.trim();
+    if (rootDir)  payload.rootDirectory = rootDir;
+
+    // env vars
+    const env = envRows.filter(r => r.key);
+    if (env.length) payload.env = Object.fromEntries(env.map(r => [r.key, r.val]));
+
+    if (activeTab === 'git') {
+      // ── GIT SOURCE ──
+      const repoUrl = $('repoUrl').value.trim();
+      const branch  = $('repoBranch').value.trim() || 'main';
+      if (!repoUrl) throw new Error('Masukkan URL repository');
+
+      log('Source: ' + repoUrl + ' [' + branch + ']', 'dim');
+
+      const repoPath = repoUrl
+        .replace(/https?:\/\/(github|gitlab|bitbucket)\.(com|org)\//, '')
+        .replace(/\.git$/, '');
+
+      if (repoUrl.includes('github.com')) {
+        payload.gitSource = { type: 'github', repo: repoPath, ref: branch };
+      } else if (repoUrl.includes('gitlab.com')) {
+        payload.gitSource = { type: 'gitlab', projectNamespace: repoPath, ref: branch };
+      } else if (repoUrl.includes('bitbucket.org')) {
+        payload.gitSource = { type: 'bitbucket', slug: repoPath, ref: branch };
+      } else {
+        throw new Error('URL harus dari GitHub, GitLab, atau Bitbucket');
+      }
+
+    } else {
+      // ── FILE SOURCE ──
+      if (!uploadedFiles.length) throw new Error('Pilih file terlebih dahulu');
+      log('Menyiapkan ' + uploadedFiles.length + ' file...', 'dim');
+
+      // Normalize paths: if all files share a single top-level folder (folder pick),
+      // strip that folder so index.html sits at project root.
+      const rawPaths = uploadedFiles.map(f =>
+        (f.webkitRelativePath || f.name).replace(/^\/+/, '').replace(/\\/g, '/')
+      );
+      let stripPrefix = '';
+      if (rawPaths.length && rawPaths.every(p => p.includes('/'))) {
+        const roots = new Set(rawPaths.map(p => p.split('/')[0]));
+        if (roots.size === 1) stripPrefix = [...roots][0] + '/';
+      }
+
+      const INLINE_LIMIT = 4 * 1024 * 1024; // 4MB — inline kecil, upload besar
+      const prepared = [];
+
+      for (let i = 0; i < uploadedFiles.length; i++) {
+        const file = uploadedFiles[i];
+        const buf = await file.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        const hash = await sha1Hex(bytes);
+        let name = rawPaths[i];
+        if (stripPrefix && name.startsWith(stripPrefix)) {
+          name = name.slice(stripPrefix.length);
+        }
+        if (!name) name = file.name;
+        prepared.push({ bytes, hash, name, size: bytes.length });
+      }
+
+      if (!prepared.length) throw new Error('Tidak ada file valid untuk di-deploy');
+
+      const deployFiles = [];
+      let uploadedCount = 0;
+      let inlinedCount = 0;
+
+      for (const f of prepared) {
+        // File kecil → inline base64 (lebih andal, hindari "Missing files")
+        if (f.size <= INLINE_LIMIT) {
+          log('Inline: ' + f.name + ' (' + fmtBytes(f.size) + ')', 'dim');
+          let binary = '';
+          const chunk = 0x8000;
+          for (let i = 0; i < f.bytes.length; i += chunk) {
+            binary += String.fromCharCode.apply(null, f.bytes.subarray(i, i + chunk));
+          }
+          deployFiles.push({
+            file: f.name,
+            data: btoa(binary),
+            encoding: 'base64',
+          });
+          inlinedCount++;
+          continue;
+        }
+
+        // File besar → upload dulu ke /v2/files
+        log('Upload: ' + f.name + ' (' + fmtBytes(f.size) + ')', 'dim');
+        let uploadUrl = 'https://api.vercel.com/v2/files';
+        if (teamSlug) uploadUrl += '?teamId=' + encodeURIComponent(teamSlug);
+
+        const upRes = await fetch(uploadUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + TOKEN,
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': String(f.size),
+            'x-vercel-digest': f.hash,
+            'x-vercel-size': String(f.size),
+          },
+          body: f.bytes,
+        });
+
+        if (!(upRes.ok || upRes.status === 200 || upRes.status === 201 || upRes.status === 204)) {
+          const e = await upRes.json().catch(() => ({}));
+          throw new Error(
+            'Gagal upload "' + f.name + '": ' +
+            (e.error?.message || ('HTTP ' + upRes.status))
+          );
+        }
+        log('  OK: ' + f.name, 'info');
+        deployFiles.push({ file: f.name, sha: f.hash, size: f.size });
+        uploadedCount++;
+      }
+
+      payload.files = deployFiles;
+      log(
+        'File siap: ' + inlinedCount + ' inline, ' + uploadedCount + ' diupload',
+        'info'
+      );
+    }
+
+    // ── POST /v13/deployments ──
+    let url = 'https://api.vercel.com/v13/deployments?skipAutoDetectionConfirmation=1';
+    if (teamSlug) url += '&teamId=' + encodeURIComponent(teamSlug);
+
+    log('Mengirim ke Vercel API...', 'dim');
+    const res  = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + TOKEN,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      // Tampilkan detail missing files jika ada
+      if (data.error?.code === 'missing_files' || (data.error?.missing && data.error.missing.length)) {
+        const miss = (data.error.missing || []).slice(0, 8).join(', ');
+        throw new Error(
+          'Missing files' + (miss ? ': ' + miss : '') +
+          '. Coba ulangi deploy atau pilih ulang file.'
+        );
+      }
+      throw new Error(data.error?.message || 'Deploy gagal (HTTP ' + res.status + ')');
+    }
+
+    deployId = data.id || data.uid;
+    const initialUrl = data.url ? 'https://' + data.url : null;
+    log('Deployment dibuat: ' + deployId, 'info');
+    if (initialUrl) log('URL sementara: ' + initialUrl, 'dim');
+    log('Polling status...', 'dim');
+
+    saveHistory({ id: deployId, name: projectName, url: initialUrl, status: 'building', ts: Date.now() });
+    pollStatus(deployId, initialUrl, teamSlug);
+
+  } catch(e) {
+    log('Error: ' + e.message, 'err');
+    showError(e.message);
+  }
+}
+
+async function pollStatus(id, initialUrl, teamSlug) {
+  let n = 0;
+  const MAX = 150;
+  pollInterval = setInterval(async () => {
+    n++;
+    if (n > MAX) {
+      clearInterval(pollInterval);
+      log('Timeout — cek Vercel dashboard langsung', 'warn');
+      showError('Timeout polling. Deploy mungkin masih berjalan — cek dashboard Vercel.');
+      return;
+    }
+    try {
+      let url = 'https://api.vercel.com/v13/deployments/' + encodeURIComponent(id);
+      if (teamSlug) url += '?teamId=' + encodeURIComponent(teamSlug);
+      const r = await fetch(url, { headers: { Authorization: 'Bearer ' + TOKEN } });
+      const d = await r.json();
+      const state = d.readyState || d.state || '';
+      const deployUrl = d.url ? 'https://' + d.url : initialUrl;
+
+      if (state === 'READY') {
+        clearInterval(pollInterval);
+        log('READY — ' + deployUrl, 'info');
+        showSuccess(deployUrl, id);
+        updateHistory(id, 'ready', deployUrl);
+      } else if (state === 'ERROR' || state === 'CANCELED') {
+        clearInterval(pollInterval);
+        const msg = (d.errorCode || state) + (d.errorMessage ? ': ' + d.errorMessage : '');
+        log('FAILED: ' + msg, 'err');
+        showError(msg);
+        updateHistory(id, 'err', deployUrl);
+      } else if (n % 5 === 0) {
+        log('Status: ' + (state || 'BUILDING') + ' (' + n + 's...)', 'dim');
+      }
+    } catch(e) {
+      if (n % 15 === 0) log('Poll error: ' + e.message, 'warn');
+    }
+  }, 1000);
+}
+
+function setBtnState(state, text) {
+  const btn = $('deployBtn');
+  btn.className = 'deploy-btn ' + (state === 'busy' ? 'busy' : state === 'done' ? 'done' : state === 'fail' ? 'fail' : '');
+  btn.disabled  = state === 'busy';
+  $('btnSpinner').style.display = state === 'busy' ? 'block' : 'none';
+  $('btnIcon').style.display    = state === 'busy' ? 'none'  : 'block';
+  $('btnText').textContent = text;
+}
+
+function showSuccess(url, id) {
+  setStatus('ready', 'READY');
+  setBtnState('done', 'Deploy ke Vercel');
+  $('deployBtn').disabled = false;
+  $('resultUrl').textContent = url;
+  $('resultUrl').href = url;
+  $('resultBox').classList.add('show');
+  $('openBtn').onclick   = () => window.open(url, '_blank', 'noopener');
+  $('copyUrlBtn').onclick = () => { navigator.clipboard?.writeText(url); toast('URL disalin'); };
+  $('dashBtn').onclick   = () => window.open('https://vercel.com/deployments/' + id, '_blank', 'noopener');
+  toast('Deploy berhasil!');
+}
+
+function showError(msg) {
+  setStatus('err', 'ERROR');
+  setBtnState('fail', 'Deploy ke Vercel');
+  $('deployBtn').disabled = false;
+  $('errorMsg').textContent = msg;
+  $('errorBox').classList.add('show');
+  toast('Deploy gagal');
+}
+
+// ─── SHA-1 ───
+async function sha1Hex(data) {
+  // Always pass ArrayBuffer or a clean Uint8Array view (not .buffer which may be larger)
+  const source = data instanceof ArrayBuffer
+    ? data
+    : data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength);
+  const buf = await crypto.subtle.digest('SHA-1', source);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ─── HISTORY + STATS (MongoDB via /api) ───
+const HIST_KEY = 'vcl_hist_v2'; // localStorage fallback
+const API = ''; // same origin (server.js)
+
+function getHistoryLocal() {
+  try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch { return []; }
+}
+function setHistoryLocal(h) {
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(h.slice(0, 40))); } catch {}
+}
+
+async function apiGet(path) {
+  const r = await fetch(API + path);
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+async function apiSend(path, method, body) {
+  const r = await fetch(API + path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.error || ('HTTP ' + r.status));
+  }
+  return r.json();
+}
+
+async function loadStats() {
+  try {
+    const data = await apiGet('/api/stats');
+    const s = data.stats || {};
+    $('statTotal').textContent = s.totalDeploys ?? 0;
+    $('statSuccess').textContent = s.successDeploys ?? 0;
+    $('statBuilding').textContent = s.buildingDeploys ?? 0;
+    $('statFailed').textContent = s.failedDeploys ?? 0;
+    if (s.lastDeployAt) {
+      $('statLast').textContent = 'terakhir: ' + new Date(s.lastDeployAt).toLocaleString('id-ID');
+    } else {
+      $('statLast').textContent = 'belum ada data';
+    }
+  } catch (e) {
+    $('statTotal').textContent = '—';
+    $('statSuccess').textContent = '—';
+    $('statBuilding').textContent = '—';
+    $('statFailed').textContent = '—';
+    $('statLast').textContent = 'server offline';
+  }
+}
+
+async function saveHistory(item) {
+  // local fallback
+  let h = getHistoryLocal();
+  h = [item, ...h.filter(x => x.id !== item.id)].slice(0, 40);
+  setHistoryLocal(h);
+  // MongoDB
+  try {
+    await apiSend('/api/deploys', 'POST', item);
+  } catch (e) {
+    console.warn('saveHistory API fail:', e.message);
+  }
+  loadStats();
+}
+
+async function updateHistory(id, status, url) {
+  // local
+  let h = getHistoryLocal().map(x => x.id === id ? { ...x, status, url } : x);
+  setHistoryLocal(h);
+  // MongoDB
+  try {
+    await apiSend('/api/deploys/' + encodeURIComponent(id), 'PATCH', { status, url });
+  } catch (e) {
+    console.warn('updateHistory API fail:', e.message);
+  }
+  renderHistory();
+  loadStats();
+}
+
+async function fetchHistoryFromServer() {
+  try {
+    const data = await apiGet('/api/deploys?limit=40');
+    if (data.ok && Array.isArray(data.deploys)) {
+      setHistoryLocal(data.deploys);
+      return data.deploys;
+    }
+  } catch (e) {
+    console.warn('fetchHistory fail:', e.message);
+  }
+  return getHistoryLocal();
+}
+
+function renderHistoryList(h) {
+  const list = $('histList');
+  if (!h.length) {
+    list.innerHTML = '<div class="empty-msg">Belum ada deploy.</div>';
+    return;
+  }
+  list.innerHTML = h.map(item => `
+    <div class="hist-row">
+      <div class="hist-dot ${esc(item.status || 'building')}"></div>
+      <div>
+        <div class="hist-name">${esc(item.name || item.id)}</div>
+        <div class="hist-meta">${esc(item.id)} &middot; ${new Date(item.ts).toLocaleString('id-ID')}</div>
+      </div>
+      <span class="badge ${esc(item.status || 'building')}">${(item.status || 'BUILDING').toUpperCase()}</span>
+      ${item.url ? `<a href="${esc(item.url)}" target="_blank" rel="noopener" class="mbtn" style="text-decoration:none">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4.5 2H2v8h8V7.5"/>
+          <path d="M7 2h3v3"/>
+          <line x1="4.5" y1="7.5" x2="10" y2="2"/>
+        </svg>
+        Buka
+      </a>` : '<span></span>'}
+    </div>
+  `).join('');
+}
+
+async function renderHistory() {
+  const h = await fetchHistoryFromServer();
+  renderHistoryList(h);
+}
+
+$('clearHistory').onclick = async () => {
+  if (!confirm('Hapus semua history deploy dari server & lokal?')) return;
+  try {
+    await apiSend('/api/deploys?confirm=yes', 'DELETE');
+  } catch (e) {
+    console.warn('clear API fail:', e.message);
+  }
+  try { localStorage.removeItem(HIST_KEY); } catch {}
+  renderHistory();
+  loadStats();
+  toast('History dihapus');
+};
+
+// ─── NAV ───
+function showSection(s) {
+  $('mainContent').style.display    = s === 'main' ? ''     : 'none';
+  $('historySection').style.display = s === 'hist' ? ''     : 'none';
+  document.querySelectorAll('.nav a').forEach(a => a.classList.remove('active'));
+}
+$('navDeploy').onclick = e => { e.preventDefault(); showSection('main'); $('navDeploy').classList.add('active'); };
+$('navHistory').onclick = e => {
+  e.preventDefault();
+  renderHistory();
+  showSection('hist');
+  $('navHistory').classList.add('active');
+};
+$('navToken').onclick = e => {
+  e.preventDefault();
+  showSection('main');
+  $('navDeploy').classList.add('active');
+  setTimeout(() => $('tokenCard').scrollIntoView({behavior:'smooth'}), 50);
+};
+$('navEnv').onclick = e => {
+  e.preventDefault();
+  showSection('main');
+  $('navDeploy').classList.add('active');
+  if (!envRows.length) { envRows.push({key:'',val:''}); renderEnv(); }
+  setTimeout(() => $('addEnvBtn').scrollIntoView({behavior:'smooth'}), 50);
+};
+
+// ─── MOB ───
+$('mobBtn').onclick = () => $('sidebar').classList.toggle('open');
+document.addEventListener('click', e => {
+  if (window.innerWidth <= 780 && !$('sidebar').contains(e.target) && !$('mobBtn').contains(e.target)) {
+    $('sidebar').classList.remove('open');
+  }
+});
+
+// ─── INIT ───
+renderEnv();
+renderHistory();
+loadStats();
+log('Vercel Deploy Tool siap. Set token untuk mulai.', 'dim');
+// refresh stats setiap 30 detik
+setInterval(loadStats, 30000);
+</script>
+</body>
+</html>
