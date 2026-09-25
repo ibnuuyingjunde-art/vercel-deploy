@@ -1,0 +1,15 @@
+{
+  "name": "vercel-deploy-tool",
+  "version": "1.0.0",
+  "description": "Vercel Deploy Tool + MongoDB stats",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.8.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
